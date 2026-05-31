@@ -32,7 +32,7 @@
 #include "mslang_proxy/public/mslang_proxy.h"
 
 // project headers --------------------------------------
-#include "imgui_renderer.h"
+#include "mshell/public/imgui_renderer.h"
 
 namespace mshell {
 

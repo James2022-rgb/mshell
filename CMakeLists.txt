@@ -5,10 +5,11 @@ cmake_minimum_required(VERSION 3.22)
 # lifecycle. The shell owns nothing application-specific; consumers
 # pass a `mshell::IFrame` that decides what to draw each frame.
 #
-# Used by:
-#   - wentos-app2 (PlaygroundHarnessFrame impl, hosts the playground
-#                  manager + every built-in playground)
-#   - gopro-viewer-lib (GoProViewerFrame impl, dedicated GoPro viewer)
+# Layered on top of: mbase, mnexus, masset, mslang-proxy. Statically
+# embeds Dear ImGui (incl. its SDL2 / Android backends) and
+# ImGuiFileDialog. SDL2 is pulled in by the parent build (so apps
+# can pick the version they want); mshell only assumes the
+# `SDL2::SDL2-static` target exists on desktop platforms.
 #
 
 set(TARGET_NAME "mshell")
@@ -84,6 +85,34 @@ if(NOT TARGET dear_imgui)
 endif()
 
 #
+# ImGuiFileDialog (aiekick/ImGuiFileDialog) -- a native-looking, ImGui-
+# rendered file dialog. Pulled in here so any app that links mshell
+# gets a working File-Open dialog without duplicating the FetchContent
+# block.
+#
+
+if(NOT TARGET ImGuiFileDialog)
+  include(FetchContent)
+  FetchContent_Declare(imgui_file_dialog
+    GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
+    GIT_TAG        v0.6.7
+  )
+  FetchContent_GetProperties(imgui_file_dialog)
+  if(NOT imgui_file_dialog_POPULATED)
+    FetchContent_Populate(imgui_file_dialog)
+  endif()
+
+  add_library(ImGuiFileDialog STATIC
+    ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+    ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialog.h
+    ${imgui_file_dialog_SOURCE_DIR}/ImGuiFileDialogConfig.h
+  )
+  set_target_properties(ImGuiFileDialog PROPERTIES FOLDER "external")
+  target_include_directories(ImGuiFileDialog PUBLIC ${imgui_file_dialog_SOURCE_DIR})
+  target_link_libraries(ImGuiFileDialog PUBLIC dear_imgui)
+endif()
+
+#
 # mshell library proper
 #
 
@@ -102,6 +131,10 @@ source_group("Public" FILES ${SOURCES_MSHELL_PUBLIC})
 set(SOURCES_MSHELL_PRIVATE
   ${SOURCES_PRIVATE_ROOT_DIR}/mshell.cpp
   ${SOURCES_PRIVATE_ROOT_DIR}/imgui_renderer.cpp
+  ${SOURCES_PRIVATE_ROOT_DIR}/slang_cache_asset.h
+  ${SOURCES_PRIVATE_ROOT_DIR}/slang_cache_asset.cpp
+  ${SOURCES_PRIVATE_ROOT_DIR}/pso_debug_imgui.h
+  ${SOURCES_PRIVATE_ROOT_DIR}/pso_debug_imgui.cpp
 )
 source_group("Private" FILES ${SOURCES_MSHELL_PRIVATE})
 
@@ -123,6 +156,7 @@ target_link_libraries(${TARGET_NAME} PUBLIC
   masset
   mslang-proxy
   dear_imgui
+  ImGuiFileDialog
 )
 if(NOT EMSCRIPTEN AND NOT ANDROID)
   target_link_libraries(${TARGET_NAME} PUBLIC SDL2::SDL2-static)
