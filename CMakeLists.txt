@@ -43,13 +43,37 @@ if(NOT TARGET mslang-proxy)
 endif()
 
 #
-# Dear ImGui -- compiled into mshell (which both apps then consume via
-# `target_link_libraries(... mshell ...)`). The repo's vendored ImGui
-# lives at wentos/thirdparty/imgui; the path is relative to this lib.
+# Dear ImGui -- compiled into mshell (which consumers then get via
+# `target_link_libraries(... mshell ...)`).
+#
+# Source resolution, in order:
+#   1. MSHELL_IMGUI_DIR, when the parent project sets it (points at a
+#      vendored Dear ImGui checkout, docking branch).
+#   2. The wentos-era sibling path `../wentos/thirdparty/imgui`, when
+#      it exists (mshell consumed as a submodule of that repo).
+#   3. FetchContent of the pinned docking tag.
 #
 
 if(NOT TARGET dear_imgui)
-  set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../wentos/thirdparty/imgui")
+  if(NOT DEFINED MSHELL_IMGUI_DIR)
+    set(_mshell_imgui_sibling "${CMAKE_CURRENT_SOURCE_DIR}/../wentos/thirdparty/imgui")
+    if(EXISTS "${_mshell_imgui_sibling}/imgui.cpp")
+      set(MSHELL_IMGUI_DIR "${_mshell_imgui_sibling}")
+    endif()
+  endif()
+  if(NOT DEFINED MSHELL_IMGUI_DIR)
+    include(FetchContent)
+    FetchContent_Declare(dear_imgui_src
+      GIT_REPOSITORY https://github.com/ocornut/imgui.git
+      GIT_TAG        v1.91.7-docking
+    )
+    FetchContent_GetProperties(dear_imgui_src)
+    if(NOT dear_imgui_src_POPULATED)
+      FetchContent_Populate(dear_imgui_src)
+    endif()
+    set(MSHELL_IMGUI_DIR "${dear_imgui_src_SOURCE_DIR}")
+  endif()
+  set(IMGUI_DIR "${MSHELL_IMGUI_DIR}")
   set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_demo.cpp
