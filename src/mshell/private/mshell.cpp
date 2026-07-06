@@ -38,9 +38,11 @@ namespace mshell {
 
 class ShellImpl final : public IShell {
 public:
-  ShellImpl(mnexus::INexus* nexus, std::unique_ptr<IFrame> frame)
+  ShellImpl(mnexus::INexus* nexus, std::unique_ptr<IFrame> frame,
+            bool show_pso_debug_window)
     : nexus_(nexus)
-    , frame_(std::move(frame)) {
+    , frame_(std::move(frame))
+    , show_pso_debug_window_(show_pso_debug_window) {
     MBASE_ASSERT(nexus_ != nullptr);
     MBASE_ASSERT(frame_ != nullptr);
   }
@@ -197,7 +199,9 @@ public:
 
     // Render ImGui overlay on top of whatever the frame drew.
     if (imgui_renderer_ != nullptr) {
-      imgui_renderer_->Tick();
+      if (show_pso_debug_window_) {
+        imgui_renderer_->Tick();
+      }
       ImGui::Render();
       ImDrawData* const draw_data = ImGui::GetDrawData();
       imgui_renderer_->UpdateGeometryBuffers(device, draw_data);
@@ -213,6 +217,7 @@ public:
 private:
   mnexus::INexus* nexus_ = nullptr;
   std::unique_ptr<IFrame> frame_;
+  bool show_pso_debug_window_ = false;
   bool frame_attached_ = false;
 
   std::unique_ptr<mshell::ImguiRenderer> imgui_renderer_;
@@ -246,7 +251,8 @@ std::unique_ptr<IShell> IShell::Create(ShellCreateDesc desc) {
   nexus_desc.app_name     = "mshell";
   mnexus::INexus* nexus = mnexus::INexus::Create(nexus_desc);
 
-  return std::make_unique<ShellImpl>(nexus, std::move(desc.frame));
+  return std::make_unique<ShellImpl>(nexus, std::move(desc.frame),
+                                     desc.show_pso_debug_window);
 }
 
 } // namespace mshell

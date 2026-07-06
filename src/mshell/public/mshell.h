@@ -116,6 +116,10 @@ struct ShellCreateDesc final {
 
   /// The frame the shell hosts. Ownership transfers to the shell.
   std::unique_ptr<IFrame> frame;
+
+  /// Draw the "PSO Event Log" debug window (per-frame pipeline-state
+  /// cache events) every frame. A development tool; off by default.
+  bool show_pso_debug_window = false;
 };
 
 class IShell {
